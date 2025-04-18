@@ -1,7 +1,7 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QFileDialog, QMenuBar
-from PyQt6.QtGui import QPixmap, QPainter, QImage, QPaintEngine, QPainter, QGuiApplication
-from PyQt6.QtCore import Qt, QSize
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QFileDialog, QMenuBar
+from PySide6.QtGui import QPixmap, QPainter, QImage, QPaintEngine, QPainter, QGuiApplication
+from PySide6.QtCore import Qt, QSize
 from PIL import Image
 from io import BytesIO
 
@@ -28,7 +28,7 @@ class PreviewWindow(QWidget):
         self.layerList = layerList
         # self.renderLayers(0)
         label = QLabel(self)
-        pixmap = QPixmap("image.png")
+        pixmap = QPixmap()
         label.setPixmap(pixmap)
         label.setScaledContents(True)
     
@@ -84,11 +84,14 @@ class MainWindow(QMainWindow):
         screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
         screen_width = screen_geometry.width()
         screen_height = screen_geometry.height()
-        window_width = 800
-        window_height = 600
-        x_pos = int((screen_width - window_width) / 2)
-        y_pos = int((screen_height - window_height) / 2)
-        self.setGeometry(x_pos, y_pos, window_width, window_height)
+        self.window_width = 800
+        self.window_height = 600
+        x_pos = int((screen_width - self.window_width) / 2)
+        y_pos = int((screen_height - self.window_height) / 2)
+        self.setGeometry(x_pos, y_pos, self.window_width, self.window_height)
+    
+    def resizeEvent(self, a0):
+        return super().resizeEvent(a0)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
