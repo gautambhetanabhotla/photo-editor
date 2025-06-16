@@ -91,7 +91,7 @@ class Composition():
 
     def importImage(self):
         file_dialog = QFileDialog()
-        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
         file_dialog.setNameFilter("Image Files (*.png *.jpg *.jpeg)")
         if file_dialog.exec():
             for selectedFile in file_dialog.selectedFiles():
@@ -120,7 +120,6 @@ class LayersWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Layers")
-        self.setGeometry(100, 100, 200, 400)
         self.setMinimumSize(QSize(200, 400))
         layout = QVBoxLayout()
         self.setLayout(layout)
