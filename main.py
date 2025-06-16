@@ -6,19 +6,17 @@ from PIL import Image
 from io import BytesIO
 
 class Layer:
-    def __init__(self, qimage: QImage):
-        self.pixmap = QPixmap.fromImage(qimage)
+    def __init__(self, imagepath: str):
+        self.pixmap = QPixmap.fromImage(QImage(imagepath))
         self.visible = True
         self.opacity = 1
         self.position = {'x': 0, 'y': 0}
 
 class PreviewWindow(QGraphicsView):
-    def __init__(self, layers: list[Layer] = []):
+    def __init__(self):
         super().__init__()
         self.scene: QGraphicsScene = QGraphicsScene()
         self.setScene(self.scene)
-        self.layers = layers
-        self.layer_items = []  # Keep track of graphics items
         
         # Enable zooming with mouse wheel
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
@@ -51,35 +49,23 @@ class PreviewWindow(QGraphicsView):
         if self.scene.sceneRect().isValid():
             self.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
     
-    def updateLayers(self):
-        # Clear existing items
-        for item in self.layer_items:
-            self.scene.removeItem(item)
-        self.layer_items.clear()
-        
-        # Add layers to scene
-        for layer in self.layers:
+    def render(self, layers: list[Layer]):
+        # Clear the scene
+        self.scene.clear()
+        # self.scene = QGraphicsScene()
+        # self.setScene(self.scene)
+
+        # Calculate bounding rect for all layers
+        min_x = min_y = float('inf')
+        max_x = max_y = float('-inf')   
+
+        for layer in layers:
             if layer.visible:
                 item = QGraphicsPixmapItem(layer.pixmap)
                 item.setPos(layer.position['x'], layer.position['y'])
                 item.setOpacity(layer.opacity)
                 self.scene.addItem(item)
-                self.layer_items.append(item)
-        
-        # Update scene rect to fit all layers
-        self.updateSceneRect()
-    
-    def updateSceneRect(self):
-        if not self.layers:
-            self.scene.setSceneRect(0, 0, 400, 300)  # Default size
-            return
-        
-        # Calculate bounding rect for all layers
-        min_x = min_y = float('inf')
-        max_x = max_y = float('-inf')
-        
-        for layer in self.layers:
-            if layer.visible:
+
                 x = layer.position['x']
                 y = layer.position['y']
                 w = layer.pixmap.width()
@@ -100,8 +86,7 @@ class Composition():
         self.layersWindow = LayersWindow()
 
     def update(self):
-        self.previewWindow.layers = self.layers
-        self.previewWindow.updateLayers()
+        self.previewWindow.render(self.layers)
         self.layersWindow.update()
 
     def importImage(self):
@@ -110,8 +95,7 @@ class Composition():
         file_dialog.setNameFilter("Image Files (*.png *.jpg *.jpeg)")
         if file_dialog.exec():
             for selectedFile in file_dialog.selectedFiles():
-                qim = QImage(selectedFile)
-                self.layers.append(Layer(qim))
+                self.layers.append(Layer(selectedFile))
         self.update()
 
     def exportImage(self):
@@ -155,10 +139,6 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Photo Editor")
-        # self.pixmap = QPixmap()
-        # self.layerList = []
-        # self.previewWindow = PreviewWindow(self.layerList)
-        # self.setCentralWidget(self.previewWindow)
         self.activeComposition = Composition()
         self.compositions = [self.activeComposition]
 
@@ -179,12 +159,12 @@ class MainWindow(QMainWindow):
         screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
         screen_width = screen_geometry.width()
         screen_height = screen_geometry.height()
-        self.window_width = 800
-        self.window_height = 600
+        initial_window_width = 800
+        initial_window_height = 600
         # Center the window
-        x_pos = int((screen_width - self.window_width) / 2)
-        y_pos = int((screen_height - self.window_height) / 2)
-        self.setGeometry(x_pos, y_pos, self.window_width, self.window_height)
+        x_pos = int((screen_width - initial_window_width) / 2)
+        y_pos = int((screen_height - initial_window_height) / 2)
+        self.setGeometry(x_pos, y_pos, initial_window_width, initial_window_height)
 
     def setActiveComposition(self, composition: Composition):
         self.activeComposition = composition
