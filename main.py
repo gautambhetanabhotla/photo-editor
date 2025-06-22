@@ -1,16 +1,41 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QFileDialog, QMenuBar, QDockWidget, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
-from PySide6.QtGui import QPixmap, QPainter, QImage, QPaintEngine, QPainter, QGuiApplication, QKeySequence, QShortcut
-from PySide6.QtCore import Qt, QSize, QEvent
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QFileDialog, QMenuBar, QDockWidget, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QFrame
+from PySide6.QtGui import QPixmap, QPainter, QImage, QPaintEngine, QPainter, QGuiApplication, QKeySequence, QShortcut, QIcon
+from PySide6.QtCore import Qt, QSize, QEvent, QObject, Signal
 from PIL import Image
 from io import BytesIO
+import os
 
-class Layer:
+class Layer(QObject):
+    visibilityChanged = Signal()
+
     def __init__(self, imagepath: str):
+        super().__init__()
         self.pixmap = QPixmap.fromImage(QImage(imagepath))
         self.visible = True
         self.opacity = 1
         self.position = {'x': 0, 'y': 0}
+        self.name = os.path.basename(imagepath)
+        print(self.name)
+        print(imagepath)
+        
+    def toggleVisibility(self):
+        self.visible = not self.visible
+        self.visibilityChanged.emit()
+        print(f"Layer {self.name} visibility toggled to {self.visible}")
+    
+    def widget(self):
+        widget = QWidget()
+        layout = QHBoxLayout()
+        widget.setLayout(layout)
+        label = QLabel(self.name)
+        layout.addWidget(label)
+        visibility_button = QPushButton()
+        visibility_button.setIcon(QIcon("./assets/eye.png"))
+        visibility_button.clicked.connect(self.toggleVisibility)
+        layout.addStretch()
+        layout.addWidget(visibility_button)
+        return widget
 
 class PreviewWindow(QGraphicsView):
     def __init__(self):
@@ -87,7 +112,7 @@ class Composition():
 
     def update(self):
         self.previewWindow.render(self.layers)
-        self.layersWindow.update()
+        self.layersWindow.update(self.layers)
 
     def importImage(self):
         file_dialog = QFileDialog()
@@ -95,7 +120,9 @@ class Composition():
         file_dialog.setNameFilter("Image Files (*.png *.jpg *.jpeg)")
         if file_dialog.exec():
             for selectedFile in file_dialog.selectedFiles():
-                self.layers.append(Layer(selectedFile))
+                layer = Layer(selectedFile)
+                self.layers.append(layer)
+                layer.visibilityChanged.connect(self.update)
         self.update()
 
     def exportImage(self):
@@ -117,17 +144,47 @@ class Composition():
                 combined_pixmap.save(save_path, "PNG")
 
 class LayersWindow(QWidget):
+
+    class LayerWidget(QWidget):
+        def __init__(self, layer: Layer):
+            super().__init__()
+            self.layer = layer
+            layout = QHBoxLayout()
+            self.setLayout(layout)
+            self.label = QLabel(layer.name)
+            layout.addWidget(self.label)
+            layout.addStretch()
+        
+        def toggleVisibility(self):
+            self.layer.visible = not self.layer.visible
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Layers")
         self.setMinimumSize(QSize(200, 400))
-        layout = QVBoxLayout()
-        self.setLayout(layout)
+        self.layout: QVBoxLayout = QVBoxLayout()
+        self.setLayout(self.layout)
 
-        # Add buttons for each layer
-        for i in range(5):
-            button = QPushButton(f"Layer {i + 1}")
-            layout.addWidget(button)
+    def clearLayout(self):
+        while self.layout.count():
+            child = self.layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+    def update(self, layers: list[Layer]):
+        self.clearLayout()
+
+        for idx, layer in enumerate(layers[::-1]):
+            layer_widget = layer.widget()
+            self.layout.addWidget(layer_widget)
+            # Add divider after each widget except the last one
+            if idx < len(layers) - 1:
+                divider = QFrame()
+                divider.setFrameShape(QFrame.Shape.HLine)
+                divider.setFrameShadow(QFrame.Shadow.Sunken)
+                divider.setMaximumHeight(1)
+                self.layout.addWidget(divider)
+        self.layout.addStretch()
 
 class MainWindow(QMainWindow):
 
@@ -169,9 +226,6 @@ class MainWindow(QMainWindow):
         self.activeComposition = composition
         self.setCentralWidget(self.activeComposition.previewWindow)
         self.layersDockWidget.setWidget(self.activeComposition.layersWindow)
-    
-    def resizeEvent(self, event):
-        print(event.size())
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
