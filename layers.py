@@ -5,7 +5,7 @@ import os
 
 class Layer(QObject):
     visibilityChanged = Signal()
-    selectionChanged = Signal(bool)
+    selectionChanged = Signal()
 
     def __init__(self, imagepath: str):
         super().__init__()
@@ -18,8 +18,7 @@ class Layer(QObject):
         self.name = os.path.basename(imagepath)
         
     def toggleVisibility(self):
-        self.visible = not self.visible
-        self.visibilityChanged.emit()
+        self.setSelected(not self.selected)
         # print(f"Layer {self.name} visibility toggled to {self.visible}")
     
     def setSelected(self, selected: bool):
@@ -77,9 +76,7 @@ class Layer(QObject):
             self.selected = not self.selected
             self.selectionChanged.emit()
         widget = QWidget()
-        original_mousePressEvent = widget.mousePressEvent
-
-        widget.mousePressEvent = onPressed
+        # widget.mousePressEvent = onPressed
         layout = QHBoxLayout()
         widget.setLayout(layout)
         label = QLabel(self.name)

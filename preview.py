@@ -266,29 +266,45 @@ class PreviewWindow(QGraphicsView):
                 if handle_type == 'top_left':
                     scale_x = 1.0 + (rel_start_x - rel_current_x)
                     scale_y = 1.0 + (rel_start_y - rel_current_y)
+                    # Anchor at bottom_right
+                    anchor_rel_x, anchor_rel_y = 1.0, 1.0
                 elif handle_type == 'top_right':
                     scale_x = 1.0 + (rel_current_x - rel_start_x)
                     scale_y = 1.0 + (rel_start_y - rel_current_y)
+                    # Anchor at bottom_left
+                    anchor_rel_x, anchor_rel_y = 0.0, 1.0
                 elif handle_type == 'bottom_left':
                     scale_x = 1.0 + (rel_start_x - rel_current_x)
                     scale_y = 1.0 + (rel_current_y - rel_start_y)
+                    # Anchor at top_right
+                    anchor_rel_x, anchor_rel_y = 1.0, 0.0
                 elif handle_type == 'bottom_right':
                     scale_x = 1.0 + (rel_current_x - rel_start_x)
                     scale_y = 1.0 + (rel_current_y - rel_start_y)
+                    # Anchor at top_left
+                    anchor_rel_x, anchor_rel_y = 0.0, 0.0
             else:
                 # Edge handles - single direction scaling
                 if handle_type == 'top':
                     scale_y = 1.0 + (rel_start_y - rel_current_y)
+                    # Anchor at bottom edge
+                    anchor_rel_x, anchor_rel_y = 0.5, 1.0
                 elif handle_type == 'bottom':
                     scale_y = 1.0 + (rel_current_y - rel_start_y)
+                    # Anchor at top edge
+                    anchor_rel_x, anchor_rel_y = 0.5, 0.0
                 elif handle_type == 'left':
                     scale_x = 1.0 + (rel_start_x - rel_current_x)
+                    # Anchor at right edge
+                    anchor_rel_x, anchor_rel_y = 1.0, 0.5
                 elif handle_type == 'right':
                     scale_x = 1.0 + (rel_current_x - rel_start_x)
+                    # Anchor at left edge
+                    anchor_rel_x, anchor_rel_y = 0.0, 0.5
             
             # Apply minimum scale to prevent negative or zero scaling
-            scale_x = max(0.1, scale_x)
-            scale_y = max(0.1, scale_y)
+            scale_x = max(0.01, scale_x)
+            scale_y = max(0.01, scale_y)
             
             # Apply scaling to all selected layers
             for layer in self.layers:
@@ -298,11 +314,11 @@ class PreviewWindow(QGraphicsView):
                     new_scale_y = original_scale['y'] * scale_y
                     layer.setScale(new_scale_x, new_scale_y)
                     
-                    # Adjust position based on scaling anchor point
+                    # Adjust position based on scaling anchor point (opposite corner/edge)
                     original_pos = self.selectedLayersStartPositions[layer]
-                    anchor_x = bounds.left() + bounds.width() * rel_start_x
-                    anchor_y = bounds.top() + bounds.height() * rel_start_y
-                    
+                    anchor_x = bounds.left() + bounds.width() * anchor_rel_x
+                    anchor_y = bounds.top() + bounds.height() * anchor_rel_y
+
                     # Calculate new position relative to anchor
                     offset_x = original_pos['x'] - anchor_x
                     offset_y = original_pos['y'] - anchor_y
