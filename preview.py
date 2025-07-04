@@ -116,11 +116,7 @@ class PreviewWindow(QGraphicsView):
     def render(self, layers: list[Layer]):
         # Store layers reference for click detection
         self.layers = layers
-        
-        # Clear the scene
         self.scene.clear()
-        # self.scene = QGraphicsScene()
-        # self.setScene(self.scene)
 
         # Calculate bounding rect for all layers
         min_x = min_y = float('inf')
@@ -131,6 +127,7 @@ class PreviewWindow(QGraphicsView):
                 item = QGraphicsPixmapItem(layer.pixmap)
                 item.setPos(layer.position['x'], layer.position['y'])
                 item.setOpacity(layer.opacity)
+                item.setData(0, "layer")
                 self.scene.addItem(item)
 
                 x = layer.position['x']
@@ -143,6 +140,7 @@ class PreviewWindow(QGraphicsView):
                     selection_rect = QGraphicsRectItem(x, y, w, h)
                     selection_rect.setPen(QPen(Qt.GlobalColor.blue, 2))
                     selection_rect.setBrush(QBrush(Qt.GlobalColor.transparent))
+                    selection_rect.setData(0, "ui_element")
                     self.scene.addItem(selection_rect)
                 
                 min_x = min(min_x, x)
