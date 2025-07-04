@@ -1,17 +1,23 @@
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem
 from PySide6.QtGui import QPainter, QPainter, QKeySequence, QShortcut, QMouseEvent, QPen, QBrush
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QPointF
 
 from layers import Layer
 
 class PreviewWindow(QGraphicsView):
     layerClicked = Signal(Layer, bool)
+    layerMoved = Signal()  # Signal to notify when layers have been moved
 
     def __init__(self):
         super().__init__()
         self.scene: QGraphicsScene = QGraphicsScene()
         self.setScene(self.scene)
         self.layers = []  # Store reference to layers for click detection
+        
+        # Drag state variables
+        self.isDragging = False
+        self.dragStartPosition = QPointF()
+        self.selectedLayersStartPositions = {}  # Store original positions of selected layers
         
         # Enable zooming with mouse wheel
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
@@ -54,14 +60,58 @@ class PreviewWindow(QGraphicsView):
             
             # Find topmost layer containing the click position
             # Check layers in reverse order (top to bottom)
+            clicked_layer = None
             for layer in reversed(self.layers):
                 if layer.visible and layer.containsPoint(scene_pos):
-                    self.layerClicked.emit(layer, ctrl_pressed)
+                    clicked_layer = layer
                     break
+            
+            # If we clicked on a selected layer, prepare for dragging
+            if clicked_layer and clicked_layer.selected:
+                self.isDragging = True
+                self.dragStartPosition = scene_pos
+                # Store original positions of all selected layers
+                self.selectedLayersStartPositions = {}
+                for layer in self.layers:
+                    if layer.selected:
+                        self.selectedLayersStartPositions[layer] = {
+                            'x': layer.position['x'],
+                            'y': layer.position['y']
+                        }
+                # Disable rubber band drag during layer dragging
+                self.setDragMode(QGraphicsView.DragMode.NoDrag)
             else:
-                self.layerClicked.emit(None, False)
+                # Handle layer selection
+                self.layerClicked.emit(clicked_layer, ctrl_pressed)
         
         super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.isDragging and event.buttons() & Qt.MouseButton.LeftButton:
+            # Calculate the drag offset
+            current_pos = self.mapToScene(event.position().toPoint())
+            offset = current_pos - self.dragStartPosition
+            
+            # Move all selected layers by the offset
+            for layer, start_pos in self.selectedLayersStartPositions.items():
+                new_pos = QPointF(start_pos['x'] + offset.x(), start_pos['y'] + offset.y())
+                layer.setPosition(new_pos.x(), new_pos.y())
+            
+            # Re-render the preview to show the updated positions
+            self.render(self.layers)
+        
+        super().mouseMoveEvent(event)
+    
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton and self.isDragging:
+            self.isDragging = False
+            self.selectedLayersStartPositions.clear()
+            # Re-enable rubber band drag
+            self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+            # Emit signal to notify that layers have been moved
+            self.layerMoved.emit()
+        
+        super().mouseReleaseEvent(event)
     
     def render(self, layers: list[Layer]):
         # Store layers reference for click detection

@@ -51,6 +51,11 @@ class Layer(QObject):
         # Check if the pixel is non-transparent (alpha > 0)
         return pixel_color.alpha() > 0
     
+    def setPosition(self, x: float, y: float):
+        """Set the position of the layer"""
+        self.position['x'] = int(x)
+        self.position['y'] = int(y)
+    
     def widget(self):
         widget = QWidget()
         layout = QHBoxLayout()
