@@ -14,9 +14,9 @@ class Composition():
         
         # Connect layer selection signal
         self.previewWindow.layerClicked.connect(self.selectLayer)
-        
-        # Connect layer moved signal
-        self.previewWindow.layerMoved.connect(self.update)
+
+        # Connect layer transformed signal
+        self.previewWindow.layerTransformed.connect(self.update)
 
     def selectLayer(self, layer: Layer, ctrl_pressed: bool):
         """Select a layer, with Ctrl+click for multiple selection"""

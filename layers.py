@@ -1,11 +1,11 @@
 from PySide6.QtWidgets import QLabel, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QFrame
-from PySide6.QtGui import QPixmap, QImage, QIcon
-from PySide6.QtCore import QSize, QObject, Signal, QPointF
+from PySide6.QtGui import QPixmap, QImage, QIcon, QMouseEvent
+from PySide6.QtCore import QSize, QObject, Signal, QPointF, Qt
 import os
 
 class Layer(QObject):
     visibilityChanged = Signal()
-    selectionChanged = Signal()
+    selectionChanged = Signal(bool)
 
     def __init__(self, imagepath: str):
         super().__init__()
@@ -31,22 +31,23 @@ class Layer(QObject):
     def containsPoint(self, point: QPointF) -> bool:
         """Check if the given point is within this layer's bounds and on a non-transparent pixel"""
         x, y = self.position['x'], self.position['y']
-        w, h = self.image.width(), self.image.height()
+        w, h = self.pixmap.width(), self.pixmap.height()
         
         # First check if point is within bounds
         if not (x <= point.x() <= x + w and y <= point.y() <= y + h):
             return False
         
-        # Calculate relative position within the image
+        # Calculate relative position within the pixmap
         rel_x = int(point.x() - x)
         rel_y = int(point.y() - y)
         
-        # Ensure coordinates are within image bounds (safety check)
+        # Ensure coordinates are within pixmap bounds (safety check)
         if rel_x < 0 or rel_x >= w or rel_y < 0 or rel_y >= h:
             return False
         
-        # Get the pixel color at the clicked position
-        pixel_color = self.image.pixelColor(rel_x, rel_y)
+        # Convert pixmap to image to get pixel color
+        pixmap_image = self.pixmap.toImage()
+        pixel_color = pixmap_image.pixelColor(rel_x, rel_y)
         
         # Check if the pixel is non-transparent (alpha > 0)
         return pixel_color.alpha() > 0
@@ -56,8 +57,29 @@ class Layer(QObject):
         self.position['x'] = int(x)
         self.position['y'] = int(y)
     
+    def setScale(self, scale_x: float, scale_y: float):
+        """Set the scale of the layer"""
+        original_pixmap = QPixmap.fromImage(self.image)
+        new_width = int(original_pixmap.width() * scale_x)
+        new_height = int(original_pixmap.height() * scale_y)
+        self.pixmap = original_pixmap.scaled(new_width, new_height, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+    
+    def getScale(self):
+        """Get the current scale of the layer"""
+        if self.image.width() == 0 or self.image.height() == 0:
+            return 1.0, 1.0
+        scale_x = self.pixmap.width() / self.image.width()
+        scale_y = self.pixmap.height() / self.image.height()
+        return scale_x, scale_y
+    
     def widget(self):
+        def onPressed(event: QMouseEvent):
+            self.selected = not self.selected
+            self.selectionChanged.emit()
         widget = QWidget()
+        original_mousePressEvent = widget.mousePressEvent
+
+        widget.mousePressEvent = onPressed
         layout = QHBoxLayout()
         widget.setLayout(layout)
         label = QLabel(self.name)
