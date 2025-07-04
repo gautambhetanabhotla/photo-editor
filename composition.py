@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog, QGraphicsScene, QGraphicsPixmapItem
 from PySide6.QtGui import QPixmap, QPainter, QPainter
 from PySide6.QtCore import Qt
 
@@ -69,9 +69,23 @@ class Composition():
             combined_pixmap = QPixmap(scene_rect.size().toSize())
             combined_pixmap.fill(Qt.GlobalColor.transparent)
             
-            # Render the scene to the pixmap
+            # Create a temporary scene with only exportable items
+            temp_scene = QGraphicsScene()
+            temp_scene.setSceneRect(scene_rect)
+            
+            # Add only layer items (not UI elements) to temp scene
+            for item in self.previewWindow.scene.items()[::-1]:
+                if item.data(0) == "layer":
+                    # Clone the item for the temp scene
+                    if isinstance(item, QGraphicsPixmapItem):
+                        cloned_item = QGraphicsPixmapItem(item.pixmap())
+                        cloned_item.setPos(item.pos())
+                        cloned_item.setOpacity(item.opacity())
+                        temp_scene.addItem(cloned_item)
+            
+            # Render the temp scene to the pixmap
             painter = QPainter(combined_pixmap)
-            self.previewWindow.scene.render(painter)
+            temp_scene.render(painter)
             painter.end()
 
             # Save the combined_pixmap to a file
